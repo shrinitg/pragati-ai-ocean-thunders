@@ -23,7 +23,7 @@ class LLMService:
 
     async def handle_and_generate_response(self, data: InputMessage, connection_id: str) -> str:
         user_data_obj: UserData = user_data.get(connection_id)
-        if user_data_obj.is_first_query:
+        if user_data_obj.is_first_query or user_data_obj.current_task_agent is None:
             user_data_obj.is_first_query = False
             supervisor_response: CompletionMessage = await self.get_supervisor_response(user_data_obj, connection_id,
                                                                                         data)
@@ -109,6 +109,9 @@ class LLMService:
                     tool_responses = []
                     for tool_call in message.tool_calls:
                         tool_name = tool_call.tool_name
+                        if tool_name == "Supervisor_Agent":
+                            user_data[connection_id].current_task_agent = None
+                            return await self.handle_and_generate_response(data, connection_id)
                         arguments = tool_call.arguments
                         call_id = tool_call.call_id
                         tool_response, is_agent_continued = await self.execute_tool_for_task_agent(tool_name, arguments,
@@ -135,10 +138,10 @@ class LLMService:
             agent_details: AgentDetails = AgentDetails(**extract_agent_by_agent_name(agent_name))
         else:
             agent_details: AgentDetails = AgentDetails(**extract_agent_by_agent_name(agent_instance.agent_name))
-        agent_response: CompletionMessage = await self.get_llm_response(agent_details,
+        agent_response: Union[CompletionMessage, str] = await self.get_llm_response(agent_details,
                                                                         agent_instance, False, connection_id, True,
                                                                         data)
-        return agent_response.content
+        return agent_response.content if isinstance(agent_response, CompletionMessage) else agent_response
 
     async def execute_tool_for_task_agent(self, tool_name: str, arguments: Dict, tools: List, connection_id: str,
                                           data: InputMessage):

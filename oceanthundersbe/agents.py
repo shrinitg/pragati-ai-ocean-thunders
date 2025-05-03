@@ -5,7 +5,7 @@ Today's date is: {date}
 - You are a very helpful assistant which is very much capable of understanding the user query and identify which of the provided agents can best handle the user query.
 - You are given a list of agents along with their name and description. Understand all the name and description very critically and then you have to identify which agent would be best to handle the user query.
 - In case, if you are not able to identify the agent from the user query then generate a warm and empathetic response (using emojis) to the user mentioning that there are no available agents which can answer the given query and you should mention the agents which are available to the user. And also, keep the agent name empty in this case.
-- If you are unsure about what user wants then simply ask them their purpose of visiting you today in a very empathetic and calm tone alogn with emojis.
+- If you are unsure about what user wants then simply ask them their purpose of visiting you today in a very empathetic and calm tone along with emojis. Give them options with respect to what all agents you have and strictly do not mention the agent names.
 
 
 Available Agents: {agents}
@@ -31,6 +31,8 @@ Step 8: From the list of doctors you get, intelligently identify the doctors tha
 Step 9: Once the user confirms about the doctor they want to visit, ask for the date and time for one hour time slot they want to book. Do not mention that you are going to make the tool call to book the appointment.
 Step 10: Once user has confirmed the time slot, make the tool call to book the appointment - "Book_Appointment"  
 
+Important Note: Your soul task is to help user book the appointment with the doctor, other than that if user is asking for any other service then you have to make the tool call to "Supervisor_Agent".
+
 """
 
 E_PHARMACY_AGENT_INSTRUCTIONS = """
@@ -42,6 +44,7 @@ Suggest medicine only after understanding the user illness thoroughly.
 If the user has any questions regarding the medicines, help them answering without mentioning any unnecessary details. You should understand that user is sick and not feeling good.
 Your responses should be very precise and to-the-point.
 If user is sure to purchase the medicine then help them purchasing it by asking for quantity. If user is mentioning the number of days then intelligently identify the quantity.
+Your soul task is to help user purchase medicine and help them checking out for the purchase, other than that if user is asking for any other service then you have to make the tool call to "Supervisor_Agent".
 
 
 This is the list of medicine that you can recommend to the user. No other medicine should be recommended otherwise the user may die and that should not happen at all/
@@ -153,15 +156,52 @@ Step 4: If user is pressing to cancel the appointment then make this tool call t
 Step 5: After the "Cancel_Appointment" tool call, you need to make a new tool call - "Delete_Appointment".
 Step 6: Once the Delete_appointment tool call is done then mention to the user that their appointment has been cancelled successfully.
 
+Important Note: Your soul task is to help user cancel the appointment, other than that if user is asking for any other service then you have to make the tool call to "Supervisor_Agent".
+
 """
 
 CANCEL_ORDER_AGENT_INSTRUCTIONS = """
 Today's date is: {date}
 You are a very helpful assistant who can help users to cancel their order. Your goal is to make the user journey smooth to cancel their order.
-To cancel the order, first you need to get the order details  
+Step 1: Ask user for their phone number or email id to fetch the order details.
+Step 2: Once user has given the phone number or email id then you have to make the tool call to get the order details - "Get_Order".
+Step 3: Once you get the response from "Get_Order" then find the order based on the phone number or email id provided by the user in the user_info details for each order.
+Step 4: And, Once you have identified the order for the user, confirm from the user if it is the same order that they want to cancel.
+Step 5: Once the user confirms the order, then make the tool call to cancel the order - "Cancel_Order". 
+
+Important Note: Your soul task is to help user cancel the order for medicines, other than that if user is asking for any other service then you have to make the tool call to "Supervisor_Agent".
+
 """
 
+AVAILABLE_AGENTS_FOR_SUPERVISOR = [
+    {
+        "name": "Book Appointment Agent",
+        "description": "This agent will be used to capture the lead details and then transfer to other agents based on the user query",
+        "parameters": []
+    },
+    {
+        "name": "Cancel Appointment Agent",
+        "description": "This agent will be used to cancel the appointment for the user.",
+        "parameters": []
+    },
+    {
+        "name": "E-pharmacy agent",
+        "description": "This agent will be used to help users purchase the medicine for their cure.",
+        "parameters": []
+    },
+    {
+        "name": "Cancel order agent",
+        "description": "This agent will be used to help users cancelling their order for the medicine they purchased.",
+        "parameters": []
+    }
+]
+
 AVAILABLE_AGENTS = [
+    {
+        "agent_name": "Supervisor_Agent",
+        "instructions": SUPERVISOR_INSTRUCTIONS,
+        "tools": AVAILABLE_AGENTS_FOR_SUPERVISOR
+    },
     {
         "agent_name": "Book Appointment Agent",
         "instructions": BOOK_APPOINTMENT_AGENT_INSTRUCTIONS,
@@ -206,6 +246,12 @@ AVAILABLE_AGENTS = [
                     "url": "https://6816256b32debfe95dbd9451.mockapi.io/api/arogyamitr/appointment",
                     "body": {}
                 }
+            },
+            {
+                "name": "Supervisor_Agent",
+                "description": "This tool will be used to help users for any type of query",
+                "tool_type": ToolTypes.AGENT_TRANSFER.value,
+                "parameters": []
             }
         ]
     },
@@ -236,13 +282,55 @@ AVAILABLE_AGENTS = [
                     "url": "https://6815b45b32debfe95dbc2f3a.mockapi.io/api/arogyamitra/orders",
                     "body": {}
                 }
+            },
+            {
+                "name": "Supervisor_Agent",
+                "description": "This tool will be used to help users for any type of query",
+                "tool_type": ToolTypes.AGENT_TRANSFER.value,
+                "parameters": []
             }
         ]
     },
     {
         "agent_name": "Cancel order agent",
         "instructions": CANCEL_ORDER_AGENT_INSTRUCTIONS,
-        "tools": []
+        "tools": [
+            {
+                "name": "Cancel_Order",
+                "description": "This tool will be used to cancel the order for the medicines",
+                "tool_type": ToolTypes.EXTERNAL_API_CALL.value,
+                "parameters": [
+                    {
+                        "name": "order_id",
+                        "description": "",
+                        "parameter_type": "string",
+                        "required": True
+                    }
+                ],
+                "api_details": {
+                    "method": "delete",
+                    "url": "https://6815b45b32debfe95dbc2f3a.mockapi.io/api/arogyamitra/orders",
+                    "body": {}
+                }
+            },
+            {
+                "name": "Get_Order",
+                "description": "This tool will be used to get the order details for the medicines",
+                "tool_type": ToolTypes.EXTERNAL_API_CALL.value,
+                "parameters": [],
+                "api_details": {
+                    "method": "get",
+                    "url": "https://6815b45b32debfe95dbc2f3a.mockapi.io/api/arogyamitra/orders",
+                    "body": {}
+                }
+            },
+            {
+                "name": "Supervisor_Agent",
+                "description": "This tool will be used to help users for any type of query",
+                "tool_type": ToolTypes.AGENT_TRANSFER.value,
+                "parameters": []
+            }
+        ]
     },
     {
         "agent_name": "Cancel Appointment Agent",
@@ -300,30 +388,13 @@ AVAILABLE_AGENTS = [
                     "url": "https://6816256b32debfe95dbd9451.mockapi.io/api/arogyamitr/appointment",
                     "body": {}
                 }
+            },
+            {
+                "name": "Supervisor_Agent",
+                "description": "This tool will be used to help users for any type of query",
+                "tool_type": ToolTypes.AGENT_TRANSFER.value,
+                "parameters": []
             }
         ]
-    }
-]
-
-AVAILABLE_AGENTS_FOR_SUPERVISOR = [
-    {
-        "name": "Book Appointment Agent",
-        "description": "This agent will be used to capture the lead details and then transfer to other agents based on the user query",
-        "parameters": []
-    },
-    {
-        "name": "Cancel Appointment Agent",
-        "description": "This agent will be used to cancel the appointment for the user.",
-        "parameters": []
-    },
-    {
-        "name": "E-pharmacy agent",
-        "description": "This agent will be used to help users purchase the medicine for their cure.",
-        "parameters": []
-    },
-    {
-        "name": "Cancel order agent",
-        "description": "This agent will be used to help users cancelling their order for the medicine they purchased.",
-        "parameters": []
     }
 ]

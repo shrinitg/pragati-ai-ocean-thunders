@@ -24,6 +24,8 @@ async def execute_external_api(tool_info, arguments):
         elif method == "delete":
             if "appointment_id" in body:
                 url += f'/{body.get("appointment_id")}'
+            if "order_id" in body:
+                url += f'/{body.get("order_id")}'
             response = requests.delete(url)
         else:
             response = requests.get(url)
