@@ -7,14 +7,15 @@ from pydantic import BaseModel
 class InputMessageType(Enum):
     TEXT = "text"
     OPTION = "option"
+    AUDIO = "audio"
 
 
 DefaultTypes = Union[str, dict, int, float]
 
 
 class InputMessage(BaseModel):
-    type: Optional[InputMessageType] = InputMessageType.TEXT
-    content: Optional[DefaultTypes] = ""
+    type: Optional[InputMessageType]
+    content: Optional[DefaultTypes]
 
 
 class AgentInstanceDetails(BaseModel):

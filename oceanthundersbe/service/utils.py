@@ -1,5 +1,6 @@
 import json
 
+import emoji
 import requests
 from llama_stack_client.types.tool_def_param import Parameter, ToolDefParam
 
@@ -58,3 +59,10 @@ async def format_tools_for_llm(tools):
         )
         final_tools.append(tool_def_param)
     return final_tools
+
+
+def remove_emojis(text):
+    try:
+        return emoji.replace_emoji(text, replace='')
+    except Exception as e:
+        return text
